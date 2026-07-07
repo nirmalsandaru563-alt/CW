@@ -763,13 +763,7 @@ if st.button("📄 Generate PDF Report", type="primary"):
                     photo_log=st.session_state.photo_log
                 )
 
-            st.success("Report generated successfully!")
-            st.download_button(
-                "⬇️ Download Progress Report (PDF)",
-                data=pdf_bytes,
-                file_name=f"{project_name.replace(' ', '_')}_Progress_Report.pdf",
-                mime="application/pdf"
-            )
+           
 # =================================================================
 # PDF COMPILATION DEFINITIONS (Must be above Tab 5)
 # =================================================================
