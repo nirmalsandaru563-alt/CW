@@ -369,6 +369,7 @@ with tab2:
                         "New Name": new_filename,
                         "Task": selected_task,
                         "Date": photo_date,
+                        "Bytes": image_bytes
                     })
                     counter += 1
 
@@ -586,6 +587,53 @@ with tab4:
 # =================================================================
 # TAB 5 : AUTOMATED PDF REPORT GENERATION (Repetitive Task #5)
 # =================================================================
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+def build_gantt_chart_matplotlib(tasks):
+    if not tasks:
+        return None
+    
+    fig, ax = plt.subplots(figsize=(10, max(2, len(tasks) * 0.6)))
+    tasks_reversed = list(reversed(tasks))
+    y_ticks = []
+    
+    for idx, t in enumerate(tasks_reversed):
+        start_num = mdates.date2num(t["Start Date"])
+        end_num = mdates.date2num(t["End Date"])
+        planned_duration = max(end_num - start_num, 1)
+        
+        # Planned Progress Bar
+        ax.barh(idx + 0.15, planned_duration, left=start_num, height=0.25, color="#b0c4d8", align='center')
+        
+        # Actual Progress Bar
+        actual_duration = planned_duration * (t["Actual %"] / 100)
+        ax.barh(idx - 0.15, actual_duration, left=start_num, height=0.25, color="#1e3a5f", align='center')
+        y_ticks.append(t["Task Name"])
+        
+    ax.set_yticks(range(len(tasks_reversed)))
+    ax.set_yticklabels(y_ticks, fontsize=10, fontweight='bold', color="#1e3a5f")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+    fig.autofmt_xdate()
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_color('#dde5f0')
+    ax.spines['bottom'].set_color('#dde5f0')
+    ax.grid(axis='x', linestyle='--', alpha=0.5)
+    
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor='#b0c4d8', label='Planned'), Patch(facecolor='#1e3a5f', label='Actual')]
+    ax.legend(handles=legend_elements, loc='upper right', frameon=True, facecolor='white', edgecolor='#dde5f0')
+    ax.set_title("Planned vs Actual Progress (Gantt Chart Export)", fontsize=12, fontweight='bold', pad=15, color="#1e3a5f")
+    
+    plt.tight_layout()
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", dpi=200)
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
 class ProgressReportPDF(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 14)
@@ -603,111 +651,50 @@ class ProgressReportPDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
-def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_rows, gantt_image_bytes=None):
-    pdf = ProgressReportPDF()
-    pdf.add_page()
+if st.button("📄 Generate PDF Report", type="primary"):
+            with st.spinner("Compiling report..."):
+                today = date.today()
+                status_rows, cost_rows = [], []
+                for t in st.session_state.tasks:
+                    total_days = max((t["End Date"] - t["Start Date"]).days, 1)
+                    elapsed_days = max((min(today, t["End Date"]) - t["Start Date"]).days, 0)
+                    planned_pct = round(min((elapsed_days / total_days) * 100, 100), 2)
+                    variance = round(t["Actual %"] - planned_pct, 2)
+                    status = "On/Ahead" if variance >= 0 else ("Slightly Behind" if variance >= -10 else "Critical Delay")
+                    status_rows.append({
+                        "Task": t["Task Name"], "Planned %": planned_pct,
+                        "Actual %": t["Actual %"], "Variance %": variance, "Status": status
+                    })
 
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 8, f"Project: {project_name}", ln=True)
-    pdf.cell(0, 8, f"Location: {site_location}", ln=True)
-    pdf.ln(4)
+                    planned_cost = t["Planned Cost (LKR)"]
+                    actual_cost = round(t["Actual Qty"] * t["Unit Cost (LKR)"], 2)
+                    cost_rows.append({
+                        "Task": t["Task Name"], "Planned Cost (LKR)": planned_cost,
+                        "Actual Cost (LKR)": actual_cost,
+                        "Variance (LKR)": calculate_cost_variance(planned_cost, actual_cost)
+                    })
 
-    # --- Task Progress Table ---
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 8, "1. Task Progress Summary", ln=True)
-    pdf.set_font("Helvetica", "B", 9)
-    col_widths = [45, 25, 25, 25, 30]
-    headers = ["Task", "Planned %", "Actual %", "Variance %", "Status"]
-    for w, h in zip(col_widths, headers):
-        pdf.cell(w, 7, h, border=1)
-    pdf.ln()
+                # Compile Gantt Chart safely via matplotlib
+                try:
+                    gantt_png = build_gantt_chart_matplotlib(st.session_state.tasks)
+                except Exception as e:
+                    gantt_png = None
+                    st.error(f"Gantt chart generation failed: {e}")
 
-    pdf.set_font("Helvetica", "", 9)
-    for row in status_rows:
-        status_clean = row["Status"].encode("latin-1", "ignore").decode("latin-1")
-        pdf.cell(col_widths[0], 7, str(row["Task"])[:22], border=1)
-        pdf.cell(col_widths[1], 7, str(row["Planned %"]), border=1)
-        pdf.cell(col_widths[2], 7, str(row["Actual %"]), border=1)
-        pdf.cell(col_widths[3], 7, str(row["Variance %"]), border=1)
-        pdf.cell(col_widths[4], 7, status_clean[:16], border=1)
-        pdf.ln()
+                pdf_bytes = generate_pdf_report(
+                    project_name, site_location,
+                    st.session_state.tasks, cost_rows, status_rows,
+                    gantt_image_bytes=gantt_png,
+                    photo_log=st.session_state.photo_log
+                )
 
-    pdf.ln(6)
-
-    # --- Cost Table ---
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 8, "2. Cost Monitoring Summary", ln=True)
-    pdf.set_font("Helvetica", "B", 9)
-    cost_widths = [45, 35, 35, 35]
-    cost_headers = ["Task", "Planned Cost", "Actual Cost", "Variance"]
-    for w, h in zip(cost_widths, cost_headers):
-        pdf.cell(w, 7, h, border=1)
-    pdf.ln()
-
-    pdf.set_font("Helvetica", "", 9)
-    total_planned, total_actual = 0.0, 0.0
-    for row in cost_rows:
-        pdf.cell(cost_widths[0], 7, str(row["Task"])[:22], border=1)
-        pdf.cell(cost_widths[1], 7, f"{row['Planned Cost (LKR)']:,.2f}", border=1)
-        pdf.cell(cost_widths[2], 7, f"{row['Actual Cost (LKR)']:,.2f}", border=1)
-        pdf.cell(cost_widths[3], 7, f"{row['Variance (LKR)']:,.2f}", border=1)
-        pdf.ln()
-        total_planned += row["Planned Cost (LKR)"]
-        total_actual += row["Actual Cost (LKR)"]
-
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.cell(cost_widths[0], 7, "TOTAL", border=1)
-    pdf.cell(cost_widths[1], 7, f"{total_planned:,.2f}", border=1)
-    pdf.cell(cost_widths[2], 7, f"{total_actual:,.2f}", border=1)
-    pdf.cell(cost_widths[3], 7, f"{total_planned - total_actual:,.2f}", border=1)
-    pdf.ln(10)
-
-    # --- Gantt chart image ---
-    if gantt_image_bytes:
-        pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(0, 8, "3. Gantt Chart (Planned vs Actual)", ln=True)
-        img_path = "/tmp/_gantt_temp.png"
-        with open(img_path, "wb") as f:
-            f.write(gantt_image_bytes)
-        pdf.image(img_path, w=180)
-
-    # --- Signatures ---
-    # Ensure signature block doesn't get split awkwardly across a page break
-    if pdf.get_y() > 240:
-        pdf.add_page()
-    else:
-        pdf.ln(20)
-
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 8, "4. Approval & Sign-Off", ln=True)
-    pdf.ln(14)
-
-    sig_y = pdf.get_y()
-    col_width = 85
-    gap = 20
-
-    # Quantity Surveyor signature line
-    pdf.line(pdf.get_x(), sig_y, pdf.get_x() + col_width, sig_y)
-    pdf.set_xy(pdf.get_x(), sig_y + 2)
-    pdf.set_font("Helvetica", "", 9)
-    pdf.cell(col_width, 6, "Quantity Surveyor", ln=0)
-
-    # Project Manager signature line
-    pdf.set_xy(10 + col_width + gap, sig_y)
-    pdf.line(pdf.get_x(), sig_y, pdf.get_x() + col_width, sig_y)
-    pdf.set_xy(10 + col_width + gap, sig_y + 2)
-    pdf.cell(col_width, 6, "Project Manager", ln=1)
-
-    pdf.ln(10)
-    pdf.set_x(10)
-    pdf.set_font("Helvetica", "", 8)
-    pdf.cell(col_width, 5, "Name & Date:", ln=0)
-    pdf.set_x(10 + col_width + gap)
-    pdf.cell(col_width, 5, "Name & Date:", ln=1)
-
-    return bytes(pdf.output(dest="S"))
-
+            st.success("Report generated successfully!")
+            st.download_button(
+                "⬇️ Download Progress Report (PDF)",
+                data=pdf_bytes,
+                file_name=f"{project_name.replace(' ', '_')}_Progress_Report.pdf",
+                mime="application/pdf"
+            )
 
 with tab5:
     st.header("Final Progress Report")
