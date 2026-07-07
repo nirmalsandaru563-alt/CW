@@ -695,7 +695,146 @@ if st.button("📄 Generate PDF Report", type="primary"):
                 file_name=f"{project_name.replace(' ', '_')}_Progress_Report.pdf",
                 mime="application/pdf"
             )
+# =================================================================
+# PDF COMPILATION DEFINITIONS (Must be above Tab 5)
+# =================================================================
+class ProgressReportPDF(FPDF):
+    def header(self):
+        self.set_font("Helvetica", "B", 14)
+        self.set_text_color(30, 58, 95)
+        self.cell(0, 10, "Construction Progress Report", ln=True, align="C")
+        self.set_font("Helvetica", "", 10)
+        self.set_text_color(90, 90, 90)
+        self.cell(0, 6, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align="C")
+        self.ln(4)
 
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Helvetica", "I", 8)
+        self.set_text_color(130, 130, 130)
+        self.cell(0, 10, f"Page {self.page_no()}", align="C")
+
+
+def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_rows, gantt_image_bytes=None, photo_log=None):
+    pdf = ProgressReportPDF()
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 8, f"Project: {project_name}", ln=True)
+    pdf.cell(0, 8, f"Location: {site_location}", ln=True)
+    pdf.ln(4)
+
+    # --- Task Progress Table ---
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, "1. Task Progress Summary", ln=True)
+    pdf.set_font("Helvetica", "B", 9)
+    col_widths = [45, 25, 25, 25, 30]
+    headers = ["Task", "Planned %", "Actual %", "Variance %", "Status"]
+    for w, h in zip(col_widths, headers):
+        pdf.cell(w, 7, h, border=1)
+    pdf.ln()
+
+    pdf.set_font("Helvetica", "", 9)
+    for row in status_rows:
+        status_clean = row["Status"].encode("latin-1", "ignore").decode("latin-1")
+        pdf.cell(col_widths[0], 7, str(row["Task"])[:22], border=1)
+        pdf.cell(col_widths[1], 7, str(row["Planned %"]), border=1)
+        pdf.cell(col_widths[2], 7, str(row["Actual %"]), border=1)
+        pdf.cell(col_widths[3], 7, str(row["Variance %"]), border=1)
+        pdf.cell(col_widths[4], 7, status_clean[:16], border=1)
+        pdf.ln()
+
+    pdf.ln(6)
+
+    # --- Cost Table ---
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, "2. Cost Monitoring Summary", ln=True)
+    pdf.set_font("Helvetica", "B", 9)
+    cost_widths = [45, 35, 35, 35]
+    cost_headers = ["Task", "Planned Cost", "Actual Cost", "Variance"]
+    for w, h in zip(cost_widths, cost_headers):
+        pdf.cell(w, 7, h, border=1)
+    pdf.ln()
+
+    pdf.set_font("Helvetica", "", 9)
+    total_planned, total_actual = 0.0, 0.0
+    for row in cost_rows:
+        pdf.cell(cost_widths[0], 7, str(row["Task"])[:22], border=1)
+        pdf.cell(cost_widths[1], 7, f"{row['Planned Cost (LKR)']:,.2f}", border=1)
+        pdf.cell(cost_widths[2], 7, f"{row['Actual Cost (LKR)']:,.2f}", border=1)
+        pdf.cell(cost_widths[3], 7, f"{row['Variance (LKR)']:,.2f}", border=1)
+        pdf.ln()
+        total_planned += row["Planned Cost (LKR)"]
+        total_actual += row["Actual Cost (LKR)"]
+
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.cell(cost_widths[0], 7, "TOTAL", border=1)
+    pdf.cell(cost_widths[1], 7, f"{total_planned:,.2f}", border=1)
+    pdf.cell(cost_widths[2], 7, f"{total_actual:,.2f}", border=1)
+    pdf.cell(cost_widths[3], 7, f"{total_planned - total_actual:,.2f}", border=1)
+    pdf.ln(10)
+
+    # --- Gantt chart image ---
+    if gantt_image_bytes:
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(0, 8, "3. Gantt Chart (Planned vs Actual)", ln=True)
+        pdf.ln(2)
+        pdf.image(io.BytesIO(gantt_image_bytes), w=180)
+        pdf.ln(10)
+
+    # --- Site Photographs Appendix ---
+    if photo_log:
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(0, 8, "4. Appendix: Site Photographs", ln=True)
+        pdf.ln(4)
+        for p in photo_log:
+            if "Bytes" in p:
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(0, 5, f"Task: {p['Task']} | Date: {p['Date'].strftime('%Y-%m-%d')}", ln=True)
+                pdf.set_font("Helvetica", "I", 8)
+                pdf.cell(0, 5, f"File Label: {p['New Name']}", ln=True)
+                pdf.ln(2)
+                try:
+                    pdf.image(io.BytesIO(p["Bytes"]), w=130)
+                except Exception as e:
+                    pdf.cell(0, 5, f"[Error loading image: {str(e)}]", ln=True)
+                pdf.ln(12)
+
+    # --- Signatures ---
+    if pdf.get_y() > 210:
+        pdf.add_page()
+    else:
+        pdf.ln(15)
+
+    sec_num = "5" if photo_log else "4"
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, f"{sec_num}. Approval & Sign-Off", ln=True)
+    pdf.ln(14)
+
+    sig_y = pdf.get_y()
+    col_width = 85
+    gap = 20
+
+    pdf.line(pdf.get_x(), sig_y, pdf.get_x() + col_width, sig_y)
+    pdf.set_xy(pdf.get_x(), sig_y + 2)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(col_width, 6, "Quantity Surveyor", ln=0)
+
+    pdf.set_xy(10 + col_width + gap, sig_y)
+    pdf.line(pdf.get_x(), sig_y, pdf.get_x() + col_width, sig_y)
+    pdf.set_xy(10 + col_width + gap, sig_y + 2)
+    pdf.cell(col_width, 6, "Project Manager", ln=1)
+
+    pdf.ln(10)
+    pdf.set_x(10)
+    pdf.set_font("Helvetica", "", 8)
+    pdf.cell(col_width, 5, "Name & Date:", ln=0)
+    pdf.set_x(10 + col_width + gap)
+    pdf.cell(col_width, 5, "Name & Date:", ln=1)
+
+    return bytes(pdf.output(dest="S"))
 with tab5:
     st.header("Final Progress Report")
     st.caption("Compiles task progress, cost monitoring and the Gantt chart into one downloadable PDF.")
@@ -705,12 +844,11 @@ with tab5:
     else:
         st.info(
             "This report includes: task summary, schedule variance, cost variance, and the Gantt chart. "
-            "Site photographs are not included in this PDF."
+            "Site photographs are appended to the end of the document."
         )
 
         if st.button("📄 Generate PDF Report", type="primary", key="final_report_pdf_btn"):
             with st.spinner("Compiling report..."):
-                # Recompute status/cost rows (reuse the same logic as tabs 3 & 4)
                 today = date.today()
                 status_rows, cost_rows = [], []
                 for t in st.session_state.tasks:
@@ -732,18 +870,17 @@ with tab5:
                         "Variance (LKR)": calculate_cost_variance(planned_cost, actual_cost)
                     })
 
-                # Render Gantt chart to PNG bytes for embedding (requires kaleido)
-                gantt_fig = build_gantt_chart(st.session_state.tasks)
                 try:
-                    gantt_png = gantt_fig.to_image(format="png", width=900, height=120 + 60 * len(st.session_state.tasks))
-                except Exception:
+                    gantt_png = build_gantt_chart_matplotlib(st.session_state.tasks)
+                except Exception as e:
                     gantt_png = None
-                    st.warning("Gantt chart image could not be embedded (kaleido not available) - report generated without it.")
+                    st.error(f"Gantt chart generation failed: {e}")
 
                 pdf_bytes = generate_pdf_report(
                     project_name, site_location,
                     st.session_state.tasks, cost_rows, status_rows,
-                    gantt_image_bytes=gantt_png
+                    gantt_image_bytes=gantt_png,
+                    photo_log=st.session_state.photo_log
                 )
 
             st.success("Report generated successfully!")
