@@ -730,7 +730,7 @@ class ProgressReportPDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
-def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_rows, gantt_image_bytes=None, photo_log=None):
+def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_rows, gantt_image_bytes=None, photo_log=None, report_start=None, report_end=None):
     pdf = ProgressReportPDF()
     pdf.add_page()
 
@@ -738,6 +738,12 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 8, f"Project: {project_name}", ln=True)
     pdf.cell(0, 8, f"Location: {site_location}", ln=True)
+
+    if report_start and report_end:
+        start_str = report_start.strftime('%d/%m/%Y')
+        end_str = report_end.strftime("%d/%m/%Y')
+        pdf.cell(0, 8, f"Reporting Period: {start_str} to {enf_str}" , ln=True)
+    
     pdf.ln(4)
 
     # --- Task Progress Table ---
@@ -864,6 +870,16 @@ with tab5:
             "Site photographs are appended to the end of the document."
         )
 
+        st.markdown("#### Define Report Period")
+        date_col1, date_col2 = st.columns(2)
+        with date_col1:
+            report_start = st.date_input("Period Start Date", value=date.today() - timedelta(days=30), key="report_period_start")
+        with date_col2:
+            report_end = st.date_input("Period End Date", value=date.today(), key="report_period_end")
+
+        st.markdown("---")
+
+        
         if st.button("📄 Generate PDF Report", type="primary", key="final_report_pdf_btn"):
             with st.spinner("Compiling report..."):
                 today = date.today()
