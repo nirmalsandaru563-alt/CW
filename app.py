@@ -659,9 +659,60 @@ with tab4:
         if over_budget_tasks:
             st.error(f"🔴 Over budget: {', '.join(over_budget_tasks)}")
 
+
+
 # =================================================================
-# PDF COMPILATION DEFINITIONS (Must be above Tab 5)
+# TAB 5 : AUTOMATED PDF REPORT GENERATION (Repetitive Task #5)
 # =================================================================
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+def build_gantt_chart_matplotlib(tasks):
+    if not tasks:
+        return None
+    
+    fig, ax = plt.subplots(figsize=(10, max(2, len(tasks) * 0.6)))
+    tasks_reversed = list(reversed(tasks))
+    y_ticks = []
+    
+    for idx, t in enumerate(tasks_reversed):
+        start_num = mdates.date2num(t["Start Date"])
+        end_num = mdates.date2num(t["End Date"])
+        planned_duration = max(end_num - start_num, 1)
+        
+        # Planned Progress Bar
+        ax.barh(idx + 0.15, planned_duration, left=start_num, height=0.25, color="#b0c4d8", align='center')
+        
+        # Actual Progress Bar
+        actual_duration = planned_duration * (t["Actual %"] / 100)
+        ax.barh(idx - 0.15, actual_duration, left=start_num, height=0.25, color="#1e3a5f", align='center')
+        y_ticks.append(t["Task Name"])
+        
+    ax.set_yticks(range(len(tasks_reversed)))
+    ax.set_yticklabels(y_ticks, fontsize=10, fontweight='bold', color="#1e3a5f")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+    fig.autofmt_xdate()
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_color('#dde5f0')
+    ax.spines['bottom'].set_color('#dde5f0')
+    ax.grid(axis='x', linestyle='--', alpha=0.5)
+    
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor='#b0c4d8', label='Planned'), Patch(facecolor='#1e3a5f', label='Actual')]
+    ax.legend(handles=legend_elements, loc='upper right', frameon=True, facecolor='white', edgecolor='#dde5f0')
+    ax.set_title("Planned vs Actual Progress (Gantt Chart Export)", fontsize=12, fontweight='bold', pad=15, color="#1e3a5f")
+    
+    plt.tight_layout()
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", dpi=200)
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 class ProgressReportPDF(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 14)
@@ -800,111 +851,6 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
 
     return bytes(pdf.output(dest="S"))
 
-# =================================================================
-# TAB 5 : AUTOMATED PDF REPORT GENERATION (Repetitive Task #5)
-# =================================================================
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-
-def build_gantt_chart_matplotlib(tasks):
-    if not tasks:
-        return None
-    
-    fig, ax = plt.subplots(figsize=(10, max(2, len(tasks) * 0.6)))
-    tasks_reversed = list(reversed(tasks))
-    y_ticks = []
-    
-    for idx, t in enumerate(tasks_reversed):
-        start_num = mdates.date2num(t["Start Date"])
-        end_num = mdates.date2num(t["End Date"])
-        planned_duration = max(end_num - start_num, 1)
-        
-        # Planned Progress Bar
-        ax.barh(idx + 0.15, planned_duration, left=start_num, height=0.25, color="#b0c4d8", align='center')
-        
-        # Actual Progress Bar
-        actual_duration = planned_duration * (t["Actual %"] / 100)
-        ax.barh(idx - 0.15, actual_duration, left=start_num, height=0.25, color="#1e3a5f", align='center')
-        y_ticks.append(t["Task Name"])
-        
-    ax.set_yticks(range(len(tasks_reversed)))
-    ax.set_yticklabels(y_ticks, fontsize=10, fontweight='bold', color="#1e3a5f")
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
-    fig.autofmt_xdate()
-    
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_color('#dde5f0')
-    ax.spines['bottom'].set_color('#dde5f0')
-    ax.grid(axis='x', linestyle='--', alpha=0.5)
-    
-    from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor='#b0c4d8', label='Planned'), Patch(facecolor='#1e3a5f', label='Actual')]
-    ax.legend(handles=legend_elements, loc='upper right', frameon=True, facecolor='white', edgecolor='#dde5f0')
-    ax.set_title("Planned vs Actual Progress (Gantt Chart Export)", fontsize=12, fontweight='bold', pad=15, color="#1e3a5f")
-    
-    plt.tight_layout()
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=200)
-    plt.close(fig)
-    buf.seek(0)
-    return buf.getvalue()
-class ProgressReportPDF(FPDF):
-    def header(self):
-        self.set_font("Helvetica", "B", 14)
-        self.set_text_color(30, 58, 95)
-        self.cell(0, 10, "Construction Progress Report", ln=True, align="C")
-        self.set_font("Helvetica", "", 10)
-        self.set_text_color(90, 90, 90)
-        self.cell(0, 6, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align="C")
-        self.ln(4)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Helvetica", "I", 8)
-        self.set_text_color(130, 130, 130)
-        self.cell(0, 10, f"Page {self.page_no()}", align="C")
-
-
-if st.button("📄 Generate PDF Report", type="primary"):
-            with st.spinner("Compiling report..."):
-                today = date.today()
-                status_rows, cost_rows = [], []
-                for t in st.session_state.tasks:
-                    total_days = max((t["End Date"] - t["Start Date"]).days, 1)
-                    elapsed_days = max((min(today, t["End Date"]) - t["Start Date"]).days, 0)
-                    planned_pct = round(min((elapsed_days / total_days) * 100, 100), 2)
-                    variance = round(t["Actual %"] - planned_pct, 2)
-                    status = "On/Ahead" if variance >= 0 else ("Slightly Behind" if variance >= -10 else "Critical Delay")
-                    status_rows.append({
-                        "Task": t["Task Name"], "Planned %": planned_pct,
-                        "Actual %": t["Actual %"], "Variance %": variance, "Status": status
-                    })
-
-                    planned_cost = t["Planned Cost (LKR)"]
-                    actual_cost = round(t["Actual Qty"] * t["Unit Cost (LKR)"], 2)
-                    cost_rows.append({
-                        "Task": t["Task Name"], "Planned Cost (LKR)": planned_cost,
-                        "Actual Cost (LKR)": actual_cost,
-                        "Variance (LKR)": calculate_cost_variance(planned_cost, actual_cost)
-                    })
-
-                # Compile Gantt Chart safely via matplotlib
-                try:
-                    gantt_png = build_gantt_chart_matplotlib(st.session_state.tasks)
-                except Exception as e:
-                    gantt_png = None
-                    st.error(f"Gantt chart generation failed: {e}")
-
-                pdf_bytes = generate_pdf_report(
-                    project_name, site_location,
-                    st.session_state.tasks, cost_rows, status_rows,
-                    gantt_image_bytes=gantt_png,
-                    photo_log=st.session_state.photo_log
-                )
-
-           
 
 with tab5:
     st.header("Final Progress Report")
