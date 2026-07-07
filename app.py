@@ -945,17 +945,21 @@ with tab5:
                     gantt_png = None
                     st.error(f"Gantt chart generation failed: {e}")
 
-                pdf_bytes = generate_pdf_report(
+                # Store the generated PDF file safely in session state memory
+                st.session_state["active_pdf_report_bytes"] = generate_pdf_report(
                     project_name, site_location,
                     st.session_state.tasks, cost_rows, status_rows,
                     gantt_image_bytes=gantt_png,
                     photo_log=st.session_state.photo_log
                 )
-
             st.success("Report generated successfully!")
+
+        # Show the download link cleanly outside the execution block if the file exists
+        if "active_pdf_report_bytes" in st.session_state and st.session_state["active_pdf_report_bytes"] is not None:
             st.download_button(
-                "⬇️ Download Progress Report (PDF)",
-                data=pdf_bytes,
+                label="⬇️ Download Progress Report (PDF)",
+                data=st.session_state["active_pdf_report_bytes"],
                 file_name=f"{project_name.replace(' ', '_')}_Progress_Report.pdf",
-                mime="application/pdf"
+                mime="application/pdf",
+                key="download_report_pdf_btn"
             )
