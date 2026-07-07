@@ -21,6 +21,44 @@ import os
 import io
 import zipfile
 from PIL import Image
+import json
+
+def export_state_to_json():
+    """Converts the task session state into a serializable JSON string."""
+    serializable_tasks = []
+    for t in st.session_state.tasks:
+        t_copy = t.copy()
+        # Convert date objects to standard YYYY-MM-DD text strings
+        if isinstance(t_copy["Start Date"], (date, datetime)):
+            t_copy["Start Date"] = t_copy["Start Date"].strftime("%Y-%m-%d")
+        if isinstance(t_copy["End Date"], (date, datetime)):
+            t_copy["End Date"] = t_copy["End Date"].strftime("%Y-%m-%d")
+        if t_copy["Last Updated"] and isinstance(t_copy["Last Updated"], (date, datetime)):
+            t_copy["Last Updated"] = t_copy["Last Updated"].strftime("%Y-%m-%d")
+        else:
+            t_copy["Last Updated"] = None
+        serializable_tasks.append(t_copy)
+    
+    state_data = {
+        "tasks": serializable_tasks,
+        "next_id": st.session_state.next_id
+    }
+    return json.dumps(state_data, indent=4)
+
+def import_state_from_json(json_string):
+    """Parses a uploaded JSON file and restores the task state."""
+    data = json.loads(json_string)
+    loaded_tasks = []
+    for t in data["tasks"]:
+        # Parse text strings back into Python date objects
+        t["Start Date"] = datetime.strptime(t["Start Date"], "%Y-%m-%d").date()
+        t["End Date"] = datetime.strptime(t["End Date"], "%Y-%m-%d").date()
+        if t["Last Updated"]:
+            t["Last Updated"] = datetime.strptime(t["Last Updated"], "%Y-%m-%d").date()
+        loaded_tasks.append(t)
+    
+    st.session_state.tasks = loaded_tasks
+    st.session_state.next_id = data["next_id"]
 
 # ---------------------------------------------------------------
 # PAGE CONFIG & MODERN STYLING
@@ -232,6 +270,43 @@ st.sidebar.markdown("Construction Progress Monitoring Tool")
 st.sidebar.markdown("---")
 project_name = st.sidebar.text_input("Project Name", value="Green Heights Mixed Development")
 site_location = st.sidebar.text_input("Site Location", value="Colombo, Sri Lanka")
+st.sidebar.markdown("---")
+
+# --- DATA PERSISTENCE SECTION ---
+st.sidebar.markdown("### 💾 Project Backup Panel")
+
+# 1. Save/Download Button
+if st.session_state.tasks:
+    json_output = export_state_to_json()
+    st.sidebar.download_button(
+        label="📥 Backup Current Data",
+        data=json_output,
+        file_name=f"{project_name.replace(' ', '_')}_progress_backup.json",
+        mime="application/json",
+        help="Download all tasks and calculated progress to your hard drive."
+    )
+else:
+    st.sidebar.caption("Add tasks to enable download backups.")
+
+st.sidebar.markdown("---")
+
+# 2. Upload/Restore Interface
+uploaded_state_file = st.sidebar.file_uploader(
+    "📤 Restore From Backup", 
+    type=["json"], 
+    help="Select a previously saved project .json file to load your records."
+)
+
+if uploaded_state_file is not None:
+    if st.sidebar.button("🔄 Import Records", use_container_width=True):
+        try:
+            raw_file_contents = uploaded_state_file.read().decode("utf-8")
+            import_state_from_json(raw_file_contents)
+            st.sidebar.success("Records completely restored!")
+            st.rerun()
+        except Exception as e:
+            st.sidebar.error(f"Import layout error: {e}")
+
 st.sidebar.markdown("---")
 st.sidebar.caption("QS4040 Automation Coursework")
 
