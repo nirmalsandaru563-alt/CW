@@ -22,6 +22,7 @@ import io
 import zipfile
 from PIL import Image
 import json
+from datetime import date, datetime, timedelta
 
 def export_state_to_json():
     """Converts the task session state into a serializable JSON string."""
@@ -874,7 +875,7 @@ with tab5:
         st.markdown("#### 📅 Define Report Coverage Period")
         date_col1, date_col2 = st.columns(2)
         with date_col1:
-            report_start = st.date_input("Period Start Date", value=date.today() - timedelta(days=30), key="report_period_start")
+            report_start = st.date_input("Period Start Date", value=date.today() - datetime.timedelta(days=30), key="report_period_start")
         with date_col2:
             report_end = st.date_input("Period End Date", value=date.today(), key="report_period_end")
         
