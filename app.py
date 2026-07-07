@@ -777,7 +777,7 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
     pdf.cell(0, 12, "CONSTRUCTION PROGRESS REPORT", ln=True, align="C")
     
     pdf.set_fill_color(30, 58, 95)
-    pdf.rect(55, pdf.get_y() + 3, 100, 1.5, "F")
+    pdf.rect(55, pdf.get_y() + 4, 100, 1.0, "F")
     pdf.ln(18)
     
     pdf.set_font("Times", "B", 15)
@@ -786,12 +786,12 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
     
     pdf.set_font("Times", "", 12)
     pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 6, f"Location Profile: {site_location}", ln=True, align="C")
+    pdf.cell(0, 6, f"Site Location: {site_location}", ln=True, align="C")
     
     if report_start and report_end:
         start_str = report_start.strftime('%d/%m/%Y')
         end_str = report_end.strftime('%d/%m/%Y')
-        pdf.cell(0, 6, f"Reporting Performance Window: {start_str} to {end_str}", ln=True, align="C")
+        pdf.cell(0, 6, f"Reporting Period: {start_str} to {end_str}", ln=True, align="C")
         
     pdf.ln(20)
     
@@ -808,8 +808,8 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
     pdf.cell(0, 5, "QS4040 Company Private Limited", ln=True, align="C")
     pdf.set_font("Times", "", 9)
     pdf.set_text_color(110, 110, 110)
-    pdf.cell(0, 4.5, "Corporate Infrastructure Headquarters: No40, Katubedda, Moratuwa", ln=True, align="C")
-    pdf.cell(0, 4.5, "Communications: qs4040@qs.lk  |  Web Portal: www.qs4040.com", ln=True, align="C")
+    pdf.cell(0, 4.5, "Headoffice: No 40, Katubedda, Moratuwa, Sri Lanka", ln=True, align="C")
+    pdf.cell(0, 4.5, "Contact: qs4040@qs.lk  |  Web Portal: www.qs4040.com", ln=True, align="C")
     pdf.cell(0, 4.5, f"Document Compilation Date: {datetime.now().strftime('%d/%m/%Y')}", ln=True, align="C")
     
     # -------------------------------------------------------------
