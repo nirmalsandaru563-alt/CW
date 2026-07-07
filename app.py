@@ -915,7 +915,9 @@ with tab5:
                     project_name, site_location,
                     st.session_state.tasks, cost_rows, status_rows,
                     gantt_image_bytes=gantt_png,
-                    photo_log=st.session_state.photo_log
+                    photo_log=st.session_state.photo_log,
+                    report_start=report_start,
+                    report_end=report_end
                 )
             st.success("Report generated successfully!")
 
