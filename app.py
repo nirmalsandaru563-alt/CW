@@ -265,7 +265,7 @@ def calculate_duration(start_date, end_date):
 # ---------------------------------------------------------------
 # SIDEBAR NAVIGATION
 # ---------------------------------------------------------------
-st.sidebar.title("🏗️ Site Control Panel")
+st.sidebar.title("SITE CONTROL PANEL")
 st.sidebar.markdown("Construction Progress Monitoring Tool")
 st.sidebar.markdown("---")
 project_name = st.sidebar.text_input("Project Name", value="Green Heights Mixed Development")
@@ -273,7 +273,7 @@ site_location = st.sidebar.text_input("Site Location", value="Colombo, Sri Lanka
 st.sidebar.markdown("---")
 
 # --- DATA PERSISTENCE SECTION ---
-st.sidebar.markdown("### 💾 Project Backup Panel")
+st.sidebar.markdown("### Project Backup")
 
 # 1. Save/Download Button
 if st.session_state.tasks:
@@ -308,12 +308,12 @@ if uploaded_state_file is not None:
             st.sidebar.error(f"Import layout error: {e}")
 
 st.sidebar.markdown("---")
-st.sidebar.caption("QS4040 Automation Coursework")
+st.sidebar.caption("GROUP 10")
 
 # ---------------------------------------------------------------
 # MAIN TITLE
 # ---------------------------------------------------------------
-st.title("🏗️ Construction Progress Monitoring System")
+st.title("Construction Progress Monitoring System")
 st.markdown(f"**Project:** {project_name}  |  **Location:** {site_location}")
 st.markdown("---")
 
