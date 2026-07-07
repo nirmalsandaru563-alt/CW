@@ -747,7 +747,7 @@ class ProgressReportPDF(FPDF):
         
         # Accent Border Separator Line
         self.set_draw_color(30, 58, 95)
-        self.set_linewidth(0.4)
+        self.set_line_width(0.4)
         self.line(10, 18, 200, 18)
         self.ln(6)
 
