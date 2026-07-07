@@ -713,50 +713,135 @@ def build_gantt_chart_matplotlib(tasks):
     return buf.getvalue()
 
 
+# =================================================================
+# PDF COMPILATION DEFINITIONS (Must be above Tab 5)
+# =================================================================
 class ProgressReportPDF(FPDF):
+    def __init__(self, logo_bytes=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logo_bytes = logo_bytes
+
     def header(self):
-        self.set_font("Helvetica", "B", 14)
-        self.set_text_color(30, 58, 95)
-        self.cell(0, 10, "Construction Progress Report", ln=True, align="C")
-        self.set_font("Helvetica", "", 10)
+        # Suppress the letterhead entirely on the Cover Page (Page 1)
+        if self.page_no() == 1:
+            return
+        
+        # Render Company Logo if uploaded
+        if self.logo_bytes:
+            try:
+                self.image(io.BytesIO(self.logo_bytes), x=10, y=6, w=22)
+            except Exception:
+                pass
+        
+        # Primary Company Identity Details
+        self.set_font("Times", "B", 12)
+        self.set_text_color(30, 58, 95) # Navy Core Hex
+        self.set_x(36 if self.logo_bytes else 10)
+        self.cell(0, 5, "QS4040 Company Private Limited", ln=True)
+        
+        # Contact and Location Sub-header Matrix
+        self.set_font("Times", "", 8.5)
         self.set_text_color(90, 90, 90)
-        self.cell(0, 6, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align="C")
-        self.ln(4)
+        self.set_x(36 if self.logo_bytes else 10)
+        self.cell(0, 4, "No40, Katubedda, Moratuwa  |  qs4040@qs.lk  |  www.qs4040.com", ln=True)
+        
+        # Accent Border Separator Line
+        self.set_draw_color(30, 58, 95)
+        self.set_linewidth(0.4)
+        self.line(10, 18, 200, 18)
+        self.ln(6)
 
     def footer(self):
+        # Suppress page tracking numbers on Cover Page
+        if self.page_no() == 1:
+            return
         self.set_y(-15)
-        self.set_font("Helvetica", "I", 8)
+        self.set_font("Times", "I", 8.5)
         self.set_text_color(130, 130, 130)
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
-def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_rows, gantt_image_bytes=None, photo_log=None, report_start=None, report_end=None):
-    pdf = ProgressReportPDF()
+def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_rows, gantt_image_bytes=None, photo_log=None, report_start=None, report_end=None, logo_bytes=None):
+    pdf = ProgressReportPDF(logo_bytes=logo_bytes)
+    
+    # -------------------------------------------------------------
+    # PAGE 1: PROFESSIONAL COVER PAGE
+    # -------------------------------------------------------------
     pdf.add_page()
-
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 8, f"Project: {project_name}", ln=True)
-    pdf.cell(0, 8, f"Location: {site_location}", ln=True)
-
+    
+    # Optional Top Margin Spacing
+    pdf.ln(35)
+    
+    # Document Core Identification Title
+    pdf.set_font("Times", "B", 26)
+    pdf.set_text_color(30, 58, 95)
+    pdf.cell(0, 12, "CONSTRUCTION PROGRESS REPORT", ln=True, align="C")
+    
+    # Clean Graphic Geometric Accent Strip
+    pdf.set_fill_color(30, 58, 95)
+    pdf.rect(55, pdf.get_y() + 3, 100, 1.5, "F")
+    pdf.ln(18)
+    
+    # Project-Specific Identity Block
+    pdf.set_font("Times", "B", 15)
+    pdf.set_text_color(40, 40, 40)
+    pdf.cell(0, 8, project_name.upper(), ln=True, align="C")
+    
+    pdf.set_font("Times", "", 11.5)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 6, f"Location Profile: {site_location}", ln=True, align="C")
+    
+    # Project Duration Timeline Range Stamps
     if report_start and report_end:
         start_str = report_start.strftime('%d/%m/%Y')
         end_str = report_end.strftime('%d/%m/%Y')
-        pdf.cell(0, 8, f"Reporting Period: {start_str} to {end_str}" , ln=True)
+        pdf.cell(0, 6, f"Reporting Performance Window: {start_str} to {end_str}", ln=True, align="C")
+        
+    pdf.ln(25)
     
+    # Large Centered Focal Logo placement on Cover Sheet
+    if logo_bytes:
+        try:
+            pdf.image(io.BytesIO(logo_bytes), x=85, y=pdf.get_y(), w=40)
+        except Exception:
+            pass
+            
+    # Position Institutional Footer Block at page base bounding line
+    pdf.set_y(-38)
+    pdf.set_font("Times", "B", 11)
+    pdf.set_text_color(30, 58, 95)
+    pdf.cell(0, 5, "QS4040 Company Private Limited", ln=True, align="C")
+    pdf.set_font("Times", "", 9)
+    pdf.set_text_color(110, 110, 110)
+    pdf.cell(0, 4.5, "Corporate Infrastructure Headquarters: No40, Katubedda, Moratuwa", ln=True, align="C")
+    pdf.cell(0, 4.5, "Communications: qs4040@qs.lk  |  Web Portal: www.qs4040.com", ln=True, align="C")
+    pdf.cell(0, 4.5, f"Document Compilation Date: {datetime.now().strftime('%d/%m/%Y')}", ln=True, align="C")
+    
+    # -------------------------------------------------------------
+    # PAGE 2: ANALYTICAL PERFORMANCE DASHBOARD
+    # -------------------------------------------------------------
+    pdf.add_page()
+    
+    # Project Summary Subhead Section
+    pdf.set_font("Times", "B", 11)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, f"Project: {project_name}", ln=True)
+    pdf.cell(0, 6, f"Location: {site_location}", ln=True)
+    if report_start and report_end:
+        pdf.cell(0, 6, f"Reporting Period: {report_start.strftime('%d/%m/%Y')} to {report_end.strftime('%d/%m/%Y')}", ln=True)
     pdf.ln(4)
 
     # --- Task Progress Table ---
-    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_font("Times", "B", 11)
     pdf.cell(0, 8, "1. Task Progress Summary", ln=True)
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font("Times", "B", 9)
     col_widths = [45, 25, 25, 25, 30]
     headers = ["Task", "Planned %", "Actual %", "Variance %", "Status"]
     for w, h in zip(col_widths, headers):
         pdf.cell(w, 7, h, border=1)
     pdf.ln()
 
-    pdf.set_font("Helvetica", "", 9)
+    pdf.set_font("Times", "", 9)
     for row in status_rows:
         status_clean = row["Status"].encode("latin-1", "ignore").decode("latin-1")
         pdf.cell(col_widths[0], 7, str(row["Task"])[:22], border=1)
@@ -769,16 +854,16 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
     pdf.ln(6)
 
     # --- Cost Table ---
-    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_font("Times", "B", 11)
     pdf.cell(0, 8, "2. Cost Monitoring Summary", ln=True)
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font("Times", "B", 9)
     cost_widths = [45, 35, 35, 35]
     cost_headers = ["Task", "Planned Cost", "Actual Cost", "Variance"]
     for w, h in zip(cost_widths, cost_headers):
         pdf.cell(w, 7, h, border=1)
     pdf.ln()
 
-    pdf.set_font("Helvetica", "", 9)
+    pdf.set_font("Times", "", 9)
     total_planned, total_actual = 0.0, 0.0
     for row in cost_rows:
         pdf.cell(cost_widths[0], 7, str(row["Task"])[:22], border=1)
@@ -789,7 +874,7 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
         total_planned += row["Planned Cost (LKR)"]
         total_actual += row["Actual Cost (LKR)"]
 
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font("Times", "B", 9)
     pdf.cell(cost_widths[0], 7, "TOTAL", border=1)
     pdf.cell(cost_widths[1], 7, f"{total_planned:,.2f}", border=1)
     pdf.cell(cost_widths[2], 7, f"{total_actual:,.2f}", border=1)
@@ -798,7 +883,7 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
 
     # --- Gantt chart image ---
     if gantt_image_bytes:
-        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_font("Times", "B", 11)
         pdf.cell(0, 8, "3. Gantt Chart (Planned vs Actual)", ln=True)
         pdf.ln(2)
         pdf.image(io.BytesIO(gantt_image_bytes), w=180)
@@ -807,14 +892,14 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
     # --- Site Photographs Appendix ---
     if photo_log:
         pdf.add_page()
-        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_font("Times", "B", 11)
         pdf.cell(0, 8, "4. Appendix: Site Photographs", ln=True)
         pdf.ln(4)
         for p in photo_log:
             if "Bytes" in p:
-                pdf.set_font("Helvetica", "B", 9)
+                pdf.set_font("Times", "B", 9)
                 pdf.cell(0, 5, f"Task: {p['Task']} | Date: {p['Date'].strftime('%Y-%m-%d')}", ln=True)
-                pdf.set_font("Helvetica", "I", 8)
+                pdf.set_font("Times", "I", 8)
                 pdf.cell(0, 5, f"File Label: {p['New Name']}", ln=True)
                 pdf.ln(2)
                 try:
@@ -830,7 +915,7 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
         pdf.ln(15)
 
     sec_num = "5" if photo_log else "4"
-    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_font("Times", "B", 11)
     pdf.cell(0, 8, f"{sec_num}. Approval & Sign-Off", ln=True)
     pdf.ln(14)
 
@@ -840,7 +925,7 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
 
     pdf.line(pdf.get_x(), sig_y, pdf.get_x() + col_width, sig_y)
     pdf.set_xy(pdf.get_x(), sig_y + 2)
-    pdf.set_font("Helvetica", "", 9)
+    pdf.set_font("Times", "", 9)
     pdf.cell(col_width, 6, "Quantity Surveyor", ln=0)
 
     pdf.set_xy(10 + col_width + gap, sig_y)
@@ -850,7 +935,7 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
 
     pdf.ln(10)
     pdf.set_x(10)
-    pdf.set_font("Helvetica", "", 8)
+    pdf.set_font("Times", "", 8)
     pdf.cell(col_width, 5, "Name & Date:", ln=0)
     pdf.set_x(10 + col_width + gap)
     pdf.cell(col_width, 5, "Name & Date:", ln=1)
@@ -866,23 +951,25 @@ with tab5:
         st.warning("Please add tasks and update progress before generating a report.")
     else:
         st.info(
-            "This report includes: task summary, schedule variance, cost variance, and the Gantt chart. "
-            "Site photographs are appended to the end of the document."
+            "This report includes: a stylized cover sheet, task summaries, schedule variance tracking, cost analytics, and a Gantt layout chart. "
+            "Site photographs are automatically appended as documentary proof items."
         )
 
-# --- Date Selection Panel Layout ---
-        st.markdown("#### 📅 Define Report Coverage Period")
-        date_col1, date_col2 = st.columns(2)
+        # Layout Split Panel Configurator
+        st.markdown("#### 🛠️ Document Configuration Options")
+        date_col1, date_col2, logo_col = st.columns([1, 1, 2])
+        
         with date_col1:
             report_start = st.date_input("Period Start Date", value=date.today() - timedelta(days=30), key="report_period_start")
         with date_col2:
             report_end = st.date_input("Period End Date", value=date.today(), key="report_period_end")
+        with logo_col:
+            uploaded_logo = st.file_uploader("Upload Company Logo Logo (PNG/JPG)", type=["png", "jpg", "jpeg"], key="company_logo_uploader")
         
         st.markdown("---")
 
-        
         if st.button("📄 Generate PDF Report", type="primary", key="final_report_pdf_btn"):
-            with st.spinner("Compiling report..."):
+            with st.spinner("Compiling structural layout elements..."):
                 today = date.today()
                 status_rows, cost_rows = [], []
                 for t in st.session_state.tasks:
@@ -910,18 +997,21 @@ with tab5:
                     gantt_png = None
                     st.error(f"Gantt chart generation failed: {e}")
 
-                # Store the generated PDF file safely in session state memory
+                # Process raw branding data payload safely out of system files
+                logo_bytes = uploaded_logo.read() if uploaded_logo is not None else None
+
+                # Pass structural context metrics directly down to engine pipeline 
                 st.session_state["active_pdf_report_bytes"] = generate_pdf_report(
                     project_name, site_location,
                     st.session_state.tasks, cost_rows, status_rows,
                     gantt_image_bytes=gantt_png,
                     photo_log=st.session_state.photo_log,
                     report_start=report_start,
-                    report_end=report_end
+                    report_end=report_end,
+                    logo_bytes=logo_bytes
                 )
-            st.success("Report generated successfully!")
+            st.success("Report generated successfully with professional branding layout!")
 
-        # Show the download link cleanly outside the execution block if the file exists
         if "active_pdf_report_bytes" in st.session_state and st.session_state["active_pdf_report_bytes"] is not None:
             st.download_button(
                 label="⬇️ Download Progress Report (PDF)",
