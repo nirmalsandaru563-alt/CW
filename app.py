@@ -15,8 +15,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.io as pio
-pio.kaleido.scope.chromium_args = ("--headless", "--no-sandbox", "--single-process", "--disable-gpu")
 from datetime import datetime, date
 from fpdf import FPDF
 import os
