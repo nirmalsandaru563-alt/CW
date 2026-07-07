@@ -708,7 +708,7 @@ with tab5:
             "Site photographs are not included in this PDF."
         )
 
-        if st.button("📄 Generate PDF Report", type="primary"):
+        if st.button("📄 Generate PDF Report", type="primary", key="final_report_pdf_btn"):
             with st.spinner("Compiling report..."):
                 # Recompute status/cost rows (reuse the same logic as tabs 3 & 4)
                 today = date.today()
