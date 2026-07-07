@@ -742,7 +742,7 @@ def generate_pdf_report(project_name, site_location, tasks, cost_rows, status_ro
     if report_start and report_end:
         start_str = report_start.strftime('%d/%m/%Y')
         end_str = report_end.strftime('%d/%m/%Y')
-        pdf.cell(0, 8, f"Reporting Period: {start_str} to {enf_str}" , ln=True)
+        pdf.cell(0, 8, f"Reporting Period: {start_str} to {end_str}" , ln=True)
     
     pdf.ln(4)
 
